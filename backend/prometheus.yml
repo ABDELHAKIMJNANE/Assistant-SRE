@@ -1,0 +1,15 @@
+# Configuration Prometheus pour le développement local
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Scrape le log-generator qui simule des métriques K8s
+  - job_name: "log-generator"
+    static_configs:
+      - targets: ["log-generator:8080"]
+
+  # Scrape Prometheus lui-même (pour vérifier qu'il fonctionne)
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

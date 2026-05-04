@@ -1,0 +1,89 @@
+# ══════════════════════════════════════════════════════
+# Stack Docker Compose — Développement Local
+# Simule l'environnement AKS sans aucun coût cloud
+# (sauf Azure OpenAI qui reste un appel Internet)
+# ══════════════════════════════════════════════════════
+
+services:
+
+  # ── Backend FastAPI (l'application à développer) ──
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - ./app:/app/app    # Hot-reload du code
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      mongodb:
+        condition: service_started
+      loki:
+        condition: service_started
+      prometheus:
+        condition: service_started
+    networks:
+      - aiops-net
+
+  # ── MongoDB (simule Cosmos DB API MongoDB) ──
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - aiops-net
+
+  # ── Mongo Express (GUI pour voir les données MongoDB) ──
+  mongo-express:
+    image: mongo-express:1.0
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017
+      ME_CONFIG_BASICAUTH: "false"
+    depends_on:
+      - mongodb
+    networks:
+      - aiops-net
+
+  # ── Loki (stockage de logs — simule le Loki de l'AKS) ──
+  loki:
+    image: grafana/loki:2.9.0
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - aiops-net
+
+  # ── Prometheus (métriques — simule le Prometheus de l'AKS) ──
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - aiops-net
+
+  # ── Log Generator (simule des pods K8s qui émettent logs et métriques) ──
+  log-generator:
+    image: python:3.11-slim
+    volumes:
+      - ./scripts/log_generator.py:/app/log_generator.py
+    command: python /app/log_generator.py
+    depends_on:
+      - loki
+      - prometheus
+    networks:
+      - aiops-net
+
+volumes:
+  mongo-data:
+
+networks:
+  aiops-net:
+    driver: bridge
