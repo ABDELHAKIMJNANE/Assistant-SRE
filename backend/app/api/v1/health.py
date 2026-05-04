@@ -50,4 +50,4 @@ async def readiness() -> dict[str, Any]:
 @router.get("/health/startup", tags=["Health"], summary="Startup probe")
 async def startup() -> dict[str, str]:
     """K8s startup probe — confirms initial startup is complete."""
-    return {"status": "started", "version": settings.app_version if hasattr(settings, 'app_version') else "1.0.0"}
+    return {"status": "started", "version": settings.app_version}
