@@ -98,8 +98,8 @@ def run_async(coro: Any, sync_fallback) -> Any:
     except RuntimeError as exc:
         try:
             coro.close()
-        except Exception:
-            pass
+        except Exception as close_exc:
+            logger.debug("Failed to close coroutine cleanly: %s", close_exc)
         logger.warning("Async loop already running, using sync fallback: %s", exc)
         return sync_fallback()
 

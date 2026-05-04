@@ -54,8 +54,8 @@ def render_approval_section(incident: dict[str, Any]) -> None:
             st.success("Incident resolved and saved for Auto-Learning.")
             st.rerun()
 
-    if cols[1].button("❌ Reject"):
-        st.warning("Solution rejected locally. No backend update available yet.")
+    if cols[1].button("❌ Reject (local)"):
+        st.warning("Solution rejection is stored locally only. Backend endpoint is not available yet.")
 
     if cols[2].button("🔄 Modify"):
         st.info("Solution updated locally. Click Approve to persist.")
