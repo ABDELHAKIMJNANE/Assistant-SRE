@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Diagnostic(BaseModel):
@@ -35,6 +35,8 @@ class IncidentCreate(BaseModel):
 class IncidentResponse(BaseModel):
     """Schema de réponse pour un incident (lecture depuis MongoDB)."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str = Field(alias="_id")
     alert_name: str
     state: str = ""
@@ -48,9 +50,6 @@ class IncidentResponse(BaseModel):
     validated_solution: Optional[str] = None
     created_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
-
-    class Config:
-        populate_by_name = True
 
 
 class ValidateRequest(BaseModel):

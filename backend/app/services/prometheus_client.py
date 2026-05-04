@@ -9,7 +9,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
-async def get_metrics(pod: str, namespace: str = "app-demo") -> dict:
+async def get_metrics(pod: str, namespace: str = "app-demo") -> dict[str, float]:
     """
     Interroger Prometheus pour récupérer les métriques d'un pod.
     Récupère : CPU, Mémoire, Restarts.
@@ -57,7 +57,7 @@ async def get_metrics(pod: str, namespace: str = "app-demo") -> dict:
         return {"memory_usage_bytes": 0, "cpu_usage_seconds": 0, "restart_count": 0}
 
 
-def format_metrics_for_prompt(metrics: dict) -> str:
+def format_metrics_for_prompt(metrics: dict[str, float]) -> str:
     """Formater les métriques pour les inclure dans le Mega-Prompt OpenAI."""
     mem_mi = metrics.get("memory_usage_bytes", 0) / (1024 * 1024)
     cpu = metrics.get("cpu_usage_seconds", 0)

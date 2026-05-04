@@ -1,6 +1,7 @@
 """Incidents endpoints — Liste et détail des incidents."""
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -14,7 +15,7 @@ router = APIRouter()
 async def list_incidents(
     skip: int = Query(0, ge=0, description="Nombre d'incidents à sauter"),
     limit: int = Query(20, ge=1, le=100, description="Nombre d'incidents à retourner"),
-):
+) -> list[dict[str, Any]]:
     """
     Liste paginée de tous les incidents, du plus récent au plus ancien.
     Utilisé par Streamlit pour afficher l'index des incidents.
@@ -24,7 +25,7 @@ async def list_incidents(
 
 
 @router.get("/incidents/{incident_id}", tags=["Incidents"])
-async def get_incident_detail(incident_id: str):
+async def get_incident_detail(incident_id: str) -> dict[str, Any]:
     """
     Détail complet d'un incident avec re-fetch des logs et métriques.
     Quand le SRE clique sur un incident dans Streamlit, on récupère :

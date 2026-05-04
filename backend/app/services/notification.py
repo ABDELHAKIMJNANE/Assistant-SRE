@@ -3,6 +3,7 @@
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from typing import Any
 
 import aiosmtplib
 
@@ -15,8 +16,8 @@ async def send_alert_email(
     alert_name: str,
     pod: str,
     namespace: str,
-    diagnostic: dict,
-):
+    diagnostic: dict[str, Any],
+) -> None:
     """
     Envoyer un email d'alerte à l'ingénieur SRE via Outlook SMTP.
 
