@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.put("/incidents/{incident_id}/resolve", tags=["Incidents"])
-async def resolve_incident(incident_id: str, body: ValidateRequest):
+async def resolve_incident(incident_id: str, body: ValidateRequest) -> dict[str, str]:
     """
     L'ingénieur SRE clique sur le bouton 'Valider' dans Streamlit.
 

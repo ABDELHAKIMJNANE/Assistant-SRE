@@ -2,8 +2,9 @@
 
 import logging
 from contextlib import asynccontextmanager
+from typing import Awaitable, Callable
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -12,6 +13,7 @@ from app.services.database import connect_db, close_db
 from app.config import settings
 from app.core.logging import setup_logging
 from app.core.exceptions import AIOpsException, RateLimitException
+from app.dependencies.rate_limit import rate_limit_check
 from app.models.error import ErrorResponse
 
 logger = logging.getLogger(__name__)
@@ -49,6 +51,26 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api/v1")
 
 
+# ── Rate Limiting Middleware ──
+RATE_LIMIT_EXEMPT_PATHS = {
+    "/healthz",
+    "/api/v1/health/live",
+    "/api/v1/health/ready",
+    "/api/v1/health/startup",
+}
+
+
+@app.middleware("http")
+async def rate_limit_middleware(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    """Appliquer un rate limiting global (hors endpoints de santé)."""
+    if request.url.path not in RATE_LIMIT_EXEMPT_PATHS:
+        await rate_limit_check(request)
+    return await call_next(request)
+
+
 # ── Centralized Error Handlers ──
 @app.exception_handler(AIOpsException)
 async def aiops_exception_handler(request: Request, exc: AIOpsException) -> JSONResponse:
@@ -74,6 +96,6 @@ async def rate_limit_exception_handler(request: Request, exc: RateLimitException
 
 
 @app.get("/healthz", tags=["Health"])
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Health check utilisé par K8s liveness probe."""
     return {"status": "ok"}

@@ -2,10 +2,10 @@
 
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from bson import ObjectId
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from app.config import settings
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 _client: Optional[AsyncIOMotorClient] = None
 
 
-async def connect_db():
+async def connect_db() -> None:
     """Ouvrir la connexion MongoDB au démarrage de l'application."""
     global _client
     _client = AsyncIOMotorClient(settings.mongodb_url)
@@ -23,7 +23,7 @@ async def connect_db():
     logger.info(f"✅ MongoDB connecté : {settings.mongodb_url[:30]}...")
 
 
-async def close_db():
+async def close_db() -> None:
     """Fermer la connexion MongoDB à l'arrêt."""
     global _client
     if _client:
@@ -31,7 +31,7 @@ async def close_db():
         logger.info("🛑 MongoDB déconnecté")
 
 
-def get_db():
+def get_db() -> AsyncIOMotorDatabase:
     """Retourner la base de données configurée."""
     return _client[settings.mongodb_db_name]
 
@@ -41,7 +41,7 @@ def get_db():
 # ═══════════════════════════════════════════════
 
 
-async def find_past_incident(alert_name: str) -> Optional[dict]:
+async def find_past_incident(alert_name: str) -> Optional[dict[str, Any]]:
     """
     Auto-Learning : chercher un incident RÉSOLU passé pour la même alerte.
     Retourne la solution validée la plus récente, ou None.
@@ -60,7 +60,7 @@ async def find_past_incident(alert_name: str) -> Optional[dict]:
     return doc
 
 
-async def insert_incident(doc: dict) -> str:
+async def insert_incident(doc: dict[str, Any]) -> str:
     """
     Sauvegarder un nouvel incident dans MongoDB / Cosmos DB.
     Retourne l'ID du document inséré.
@@ -72,7 +72,7 @@ async def insert_incident(doc: dict) -> str:
     return incident_id
 
 
-async def get_incident(incident_id: str) -> Optional[dict]:
+async def get_incident(incident_id: str) -> Optional[dict[str, Any]]:
     """Récupérer un incident par son ID."""
     db = get_db()
     doc = await db["incidents"].find_one({"_id": ObjectId(incident_id)})
@@ -81,7 +81,7 @@ async def get_incident(incident_id: str) -> Optional[dict]:
     return doc
 
 
-async def list_incidents(skip: int = 0, limit: int = 20) -> list:
+async def list_incidents(skip: int = 0, limit: int = 20) -> list[dict[str, Any]]:
     """Liste paginée de tous les incidents, du plus récent au plus ancien."""
     db = get_db()
     cursor = (
@@ -102,7 +102,7 @@ async def update_incident_status(
     incident_id: str,
     status: str,
     validated_solution: Optional[str] = None,
-):
+) -> None:
     """
     Mettre à jour le statut d'un incident.
     Quand le SRE clique sur 'Valider', on stocke :

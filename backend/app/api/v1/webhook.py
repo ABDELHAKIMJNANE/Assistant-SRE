@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-async def process_alert(payload: AlertPayload):
+async def process_alert(payload: AlertPayload) -> None:
     """
     Pipeline complète de traitement d'une alerte.
     Exécutée en arrière-plan pour répondre immédiatement à Grafana.
@@ -86,7 +86,7 @@ async def process_alert(payload: AlertPayload):
 async def receive_webhook(
     payload: AlertPayload,
     background_tasks: BackgroundTasks,
-):
+) -> dict[str, str]:
     """
     Reçoit une alerte Grafana et lance le traitement en arrière-plan.
 

@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.post("/chat", response_model=ChatResponse, tags=["Chat"])
-async def chat_with_ai(body: ChatRequest):
+async def chat_with_ai(body: ChatRequest) -> ChatResponse:
     """
     Chatbot SRE : l'ingénieur pose une question sur un incident.
     FastAPI re-prompt OpenAI avec le contexte complet de l'incident.

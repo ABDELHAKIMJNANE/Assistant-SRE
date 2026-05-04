@@ -19,7 +19,7 @@ async def liveness() -> dict[str, str]:
 
 
 @router.get("/health/ready", tags=["Health"], summary="Readiness probe")
-async def readiness() -> dict[str, Any]:
+async def readiness() -> JSONResponse:
     """
     K8s readiness probe — confirms the app is ready to serve traffic.
     Checks MongoDB connectivity.
