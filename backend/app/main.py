@@ -3,12 +3,16 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.v1.router import api_router
 from app.services.database import connect_db, close_db
 from app.config import settings
+from app.core.logging import setup_logging
+from app.core.exceptions import AIOpsException, RateLimitException
+from app.models.error import ErrorResponse
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +20,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gestion du cycle de vie : connexion DB au démarrage, fermeture à l'arrêt."""
-    logging.basicConfig(level=getattr(logging, settings.log_level))
-    logger.info("🚀 Démarrage du backend AIOps...")
+    setup_logging(settings.log_level)
+    logger.info("🚀 Démarrage du backend AIOps...", extra={"environment": settings.environment})
     await connect_db()
     logger.info("✅ Connexion MongoDB établie")
     yield
@@ -32,7 +36,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── CORS — Permettre les requêtes du frontend Streamlit ──
+# ── CORS ──
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,6 +47,30 @@ app.add_middleware(
 
 # ── Routes API v1 ──
 app.include_router(api_router, prefix="/api/v1")
+
+
+# ── Centralized Error Handlers ──
+@app.exception_handler(AIOpsException)
+async def aiops_exception_handler(request: Request, exc: AIOpsException) -> JSONResponse:
+    """Handle all custom AIOps exceptions."""
+    logger.error(f"AIOps error: {exc.message}", extra={"path": str(request.url)})
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            error=exc.message,
+            status_code=exc.status_code,
+        ).model_dump(),
+    )
+
+
+@app.exception_handler(RateLimitException)
+async def rate_limit_exception_handler(request: Request, exc: RateLimitException) -> JSONResponse:
+    """Handle rate limit exceptions."""
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"error": exc.message, "status_code": 429},
+        headers={"Retry-After": str(settings.rate_limit_period)},
+    )
 
 
 @app.get("/healthz", tags=["Health"])

@@ -1,6 +1,6 @@
 """Configuration centralisée — lecture des variables d'environnement."""
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -9,6 +9,16 @@ class Settings(BaseSettings):
     En local : lues depuis le fichier .env
     En AKS   : injectées par K8s Secrets (CSI Driver → Key Vault)
     """
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+
+    # ── App ──
+    app_version: str = "1.0.0"
+    environment: str = "development"
 
     # ── MongoDB / Cosmos DB ──
     mongodb_url: str = "mongodb://mongodb:27017"
@@ -34,9 +44,9 @@ class Settings(BaseSettings):
     # ── Logging ──
     log_level: str = "INFO"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    # ── Rate Limiting ──
+    rate_limit_requests: int = 100
+    rate_limit_period: int = 60  # seconds
 
 
 settings = Settings()

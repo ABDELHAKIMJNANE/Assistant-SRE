@@ -1,7 +1,7 @@
 """Fixtures pytest pour les tests du backend AIOps."""
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,14 +18,36 @@ def event_loop():
 @pytest.fixture()
 def client():
     """
-    Client de test FastAPI avec MongoDB mocké.
+    Client de test FastAPI avec MongoDB et services externes mockés.
     Aucune connexion réelle à MongoDB ou OpenAI nécessaire.
     """
-    with patch("app.services.database.connect_db", new_callable=AsyncMock):
-        with patch("app.services.database.close_db", new_callable=AsyncMock):
-            from app.main import app
-            with TestClient(app) as c:
-                yield c
+    mock_collection = MagicMock()
+    mock_collection.find_one = AsyncMock(return_value=None)
+    mock_collection.insert_one = AsyncMock(return_value=MagicMock(inserted_id="mock_id"))
+    mock_collection.update_one = AsyncMock(return_value=None)
+
+    async def async_empty_cursor(*args, **kwargs):
+        return
+        yield
+
+    mock_cursor = MagicMock()
+    mock_cursor.sort = MagicMock(return_value=mock_cursor)
+    mock_cursor.skip = MagicMock(return_value=mock_cursor)
+    mock_cursor.limit = MagicMock(return_value=mock_cursor)
+    mock_cursor.__aiter__ = lambda self: async_empty_cursor()
+    mock_collection.find = MagicMock(return_value=mock_cursor)
+
+    mock_db_instance = MagicMock()
+    mock_db_instance.command = AsyncMock(return_value={"ok": 1})
+    mock_db_instance.__getitem__ = MagicMock(return_value=mock_collection)
+
+    with patch("app.services.database.connect_db", new_callable=AsyncMock), \
+         patch("app.services.database.close_db", new_callable=AsyncMock), \
+         patch("app.services.database._client", MagicMock()), \
+         patch("app.services.database.get_db", return_value=mock_db_instance):
+        from app.main import app
+        with TestClient(app) as c:
+            yield c
 
 
 @pytest.fixture()
@@ -93,4 +115,29 @@ def sample_webhook_payload():
             "container": "fastapi",
         },
         "message": "Container killed due to OOM",
+    }
+
+
+@pytest.fixture()
+def sample_incident():
+    """Incident de test complet."""
+    return {
+        "_id": "507f1f77bcf86cd799439011",
+        "alert_name": "OOMKilled",
+        "state": "alerting",
+        "labels": {"pod": "fastapi-demo-xxx", "namespace": "app-demo"},
+        "message": "Container killed due to OOM",
+        "logs_collected": 10,
+        "metrics_collected": 3,
+        "past_solution_used": None,
+        "diagnostic": {
+            "cause_racine": "Memory leak",
+            "solution": "kubectl set resources ...",
+            "severite": "haute",
+            "categorie": "resource_exhaustion",
+        },
+        "status": "ouvert",
+        "validated_solution": None,
+        "created_at": "2024-01-01T00:00:00",
+        "resolved_at": None,
     }
