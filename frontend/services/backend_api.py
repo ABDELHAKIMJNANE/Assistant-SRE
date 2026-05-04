@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Callable, Generic, Optional, TypeVar
 
 import httpx
 
@@ -90,7 +90,7 @@ class BackendAPI:
         return self._request_sync("POST", "/chat", json=payload)
 
 
-def run_async(coro: Any, sync_fallback) -> Any:
+def run_async(coro: Any, sync_fallback: Callable[[], Any]) -> Any:
     """Run async coroutine in a sync Streamlit context with a safe fallback."""
 
     try:
@@ -99,7 +99,7 @@ def run_async(coro: Any, sync_fallback) -> Any:
         try:
             coro.close()
         except Exception as close_exc:
-            logger.debug("Failed to close coroutine cleanly: %s", close_exc)
+            logger.warning("Failed to close coroutine cleanly: %s", close_exc)
         logger.warning("Async loop already running, using sync fallback: %s", exc)
         return sync_fallback()
 
