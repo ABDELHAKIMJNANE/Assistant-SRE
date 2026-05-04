@@ -43,7 +43,6 @@ def main() -> None:
 
     st.markdown("### How it works")
     st.write(
-        ""
         "1. Grafana triggers alerts → FastAPI collects logs & metrics.\n"
         "2. Azure OpenAI proposes a diagnostic and solution.\n"
         "3. You validate the fix to feed Auto-Learning memory.\n"
