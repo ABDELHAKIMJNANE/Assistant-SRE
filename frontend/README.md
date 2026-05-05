@@ -31,7 +31,7 @@ streamlit run streamlit_app.py
 ## 🧭 Pages
 
 - **Dashboard**: global incident overview and filters.
-- **Incident Analysis**: logs, metrics, AI solution, chat, approvals.
+- **Incident Analysis**: overview context, logs, metrics, AI solution, chat, approvals.
 - **Settings**: diagnostics and cache management.
 
 ## 🛠️ Notes
