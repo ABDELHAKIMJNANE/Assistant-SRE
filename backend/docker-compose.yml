@@ -22,6 +22,8 @@ services:
         condition: service_started
       prometheus:
         condition: service_started
+      mailhog:
+        condition: service_started
     networks:
       - aiops-net
 
@@ -78,6 +80,15 @@ services:
     depends_on:
       - loki
       - prometheus
+    networks:
+      - aiops-net
+
+  # ── MailHog (serveur SMTP de test — interface web : localhost:8025) ──
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1025:1025"   # SMTP (backend → MailHog)
+      - "8025:8025"   # Interface web (voir les emails reçus)
     networks:
       - aiops-net
 

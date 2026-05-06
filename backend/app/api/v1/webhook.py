@@ -55,6 +55,8 @@ async def process_alert(payload: AlertPayload) -> None:
     )
 
     # ── ⑥ Sauvegarde dans Cosmos DB ──
+    # L'incident est créé avec status "pending_approval".
+    # La solution validée finale sera enregistrée UNIQUEMENT quand le SRE approuve.
     incident_doc = {
         "alert_name": payload.alert_name,
         "state": payload.state,
@@ -64,7 +66,7 @@ async def process_alert(payload: AlertPayload) -> None:
         "metrics_collected": len(metrics),
         "past_solution_used": past_solution,
         "diagnostic": diagnostic,
-        "status": "ouvert",
+        "status": "pending_approval",
         "validated_solution": None,
         "created_at": datetime.utcnow(),
         "resolved_at": None,

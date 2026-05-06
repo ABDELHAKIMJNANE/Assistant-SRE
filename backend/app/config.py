@@ -34,12 +34,14 @@ class Settings(BaseSettings):
     loki_url: str = "http://loki:3100"
     prometheus_url: str = "http://prometheus:9090"
 
-    # ── Email Outlook ──
-    smtp_host: str = "smtp.office365.com"
-    smtp_port: int = 587
+    # ── Email SMTP (Outlook en prod, MailHog en dev local) ──
+    smtp_host: str = "mailhog"
+    smtp_port: int = 1025
     smtp_user: str = ""
     smtp_password: str = ""
-    sre_email: str = ""
+    smtp_use_tls: bool = False  # False pour MailHog, True pour Outlook
+    smtp_from_name: str = "Assistant SRE"
+    sre_email: str = "sre-team@example.com"
 
     # ── Logging ──
     log_level: str = "INFO"

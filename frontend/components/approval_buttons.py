@@ -1,4 +1,4 @@
-"""Approval actions for AI solutions."""
+"""Approval actions for AI solutions — only 'Approve' is available."""
 
 from __future__ import annotations
 
@@ -22,45 +22,64 @@ def _next_incident_id() -> str | None:
 
 
 def render_approval_section(incident: dict[str, Any]) -> None:
-    st.markdown("### ✅ Approval")
+    """
+    Section d'approbation simplifiée.
 
+    - Si l'incident est déjà résolu : affiche la solution finale validée.
+    - Si l'incident est en attente : affiche un bouton 'Approuver'.
+      En cliquant, le backend appelle l'IA pour formater la solution finale,
+      la sauvegarde dans la DB, et l'affiche ici.
+    """
     incident_id = str(incident.get("_id", ""))
-    status = incident.get("status", "pending")
-    diagnostic = incident.get("diagnostic", {})
+    status = incident.get("status", "pending_approval")
 
-    solution_key = f"solution_edit_{incident_id}"
-    default_solution = incident.get("validated_solution") or diagnostic.get("solution", "")
-    edited_solution = st.text_area(
-        "Modify solution before approval",
-        value=st.session_state.get(solution_key, default_solution),
-        height=140,
-        key=solution_key,
-    )
-
-    note_key = f"approval_note_{incident_id}"
-    st.text_input("Approval notes (optional)", key=note_key)
+    st.markdown("### ✅ Approbation de la solution")
 
     if status == "résolu":
-        st.success("Incident already resolved.")
+        st.success("✅ Incident résolu — solution finale validée et enregistrée.")
+        validated = incident.get("validated_solution", "")
+        if validated:
+            st.markdown("**Solution finale approuvée :**")
+            st.markdown(validated)
+        next_id = _next_incident_id()
+        if next_id and st.button("⏭️ Incident suivant"):
+            set_selected_incident(next_id)
+            st.rerun()
         return
 
-    cols = st.columns(4)
-    if cols[0].button("✅ Approve"):
-        result = backend_api.resolve_incident(incident_id, edited_solution)
-        if result.error:
-            st.error(f"Unable to approve: {result.error}")
-        else:
-            clear_cache()
-            st.success("Incident resolved and saved for Auto-Learning.")
+    # Incident en attente d'approbation
+    diagnostic = incident.get("diagnostic", {})
+    if not diagnostic:
+        st.warning("Aucun diagnostic disponible. Attendez que l'analyse IA soit terminée.")
+        return
+
+    st.info(
+        "L'IA a proposé une solution. Consultez l'onglet **Solution** pour la revoir, "
+        "puis cliquez sur **Approuver** ci-dessous.\n\n"
+        "Après approbation, l'IA reformatera la solution finale et la sauvegardera en base."
+    )
+
+    col_approve, col_next = st.columns([2, 1])
+
+    with col_approve:
+        if st.button("✅ Approuver la solution", type="primary", use_container_width=True):
+            with st.spinner("🤖 L'IA formate la solution finale…"):
+                result = backend_api.approve_incident(incident_id)
+
+            if result.error:
+                st.error(f"Erreur lors de l'approbation : {result.error}")
+            else:
+                data = result.data or {}
+                formatted = data.get("formatted_solution", "")
+                clear_cache()
+                st.success("🎉 Incident approuvé et résolu !")
+                if formatted:
+                    st.markdown("**Solution finale générée par l'IA :**")
+                    st.markdown(formatted)
+                st.rerun()
+
+    with col_next:
+        next_id = _next_incident_id()
+        if next_id and st.button("⏭️ Suivant", use_container_width=True):
+            set_selected_incident(next_id)
             st.rerun()
-
-    if cols[1].button("❌ Reject (local)"):
-        st.warning("Solution rejection is stored locally only. Backend endpoint is not available yet.")
-
-    if cols[2].button("🔄 Modify"):
-        st.info("Solution updated locally. Click Approve to persist.")
-
-    next_id = _next_incident_id()
-    if cols[3].button("⏭️ Next incident") and next_id:
-        set_selected_incident(next_id)
-        st.rerun()
