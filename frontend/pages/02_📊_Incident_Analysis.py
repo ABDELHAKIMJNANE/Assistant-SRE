@@ -6,7 +6,6 @@ import streamlit as st
 
 from components.ai_solution import render_ai_solution
 from components.approval_buttons import render_approval_section
-from components.auto_learning_panel import render_auto_learning_panel
 from components.chatbot_section import render_chatbot
 from components.incident_header import render_incident_header
 from components.incident_overview import render_incident_overview
@@ -46,12 +45,11 @@ incident = detail_result.data or {}
 render_incident_header(incident)
 
 overview_tab, log_tab, metrics_tab, solution_tab, chat_tab, approval_tab = st.tabs(
-    ["🧭 Overview", "📝 Logs", "📊 Metrics", "🤖 Solution", "💬 Chat", "✅ Approval"]
+    ["🧭 Vue d'ensemble", "📝 Logs", "📊 Métriques", "🤖 Solution IA", "💬 Chat", "✅ Approuver"]
 )
 
 with overview_tab:
     render_incident_overview(incident)
-    render_auto_learning_panel(incident)
 
 with log_tab:
     render_logs_section(incident.get("current_logs", []))

@@ -67,6 +67,12 @@ class BackendAPI:
     async def fetch_incident_detail(self, incident_id: str) -> ApiResult[dict[str, Any]]:
         return await self._request("GET", f"/incidents/{incident_id}")
 
+    async def approve_incident(self, incident_id: str) -> ApiResult[dict[str, Any]]:
+        return await self._request("POST", f"/incidents/{incident_id}/approve")
+
+    def approve_incident_sync(self, incident_id: str) -> ApiResult[dict[str, Any]]:
+        return self._request_sync("POST", f"/incidents/{incident_id}/approve")
+
     async def resolve_incident(self, incident_id: str, solution: str) -> ApiResult[dict[str, Any]]:
         payload = {"validated_solution": solution}
         return await self._request("PUT", f"/incidents/{incident_id}/resolve", json=payload)
@@ -118,6 +124,13 @@ def get_incident_detail(incident_id: str) -> ApiResult[dict[str, Any]]:
     return run_async(
         api_client.fetch_incident_detail(incident_id),
         lambda: api_client.fetch_incident_detail_sync(incident_id),
+    )
+
+
+def approve_incident(incident_id: str) -> ApiResult[dict[str, Any]]:
+    return run_async(
+        api_client.approve_incident(incident_id),
+        lambda: api_client.approve_incident_sync(incident_id),
     )
 
 
