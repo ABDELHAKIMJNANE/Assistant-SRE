@@ -403,7 +403,6 @@ open http://localhost:8000/docs
 LOKI_URL="http://localhost:3100"
 POD="fastapi-demo-7b9c8d6f4-x2k9p"
 NS="app-demo"
-NOW=$(date -u +%s%N)  # timestamp nanoseconds
 
 # Fonction d'injection d'un log
 push_log() {

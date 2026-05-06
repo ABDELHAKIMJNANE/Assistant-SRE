@@ -49,6 +49,14 @@ Règles importantes :
 - Tenir compte des logs ET des métriques pour le diagnostic"""
 
 
+_MAX_ERROR_LINE_LENGTH = 200  # caractères max conservés par ligne d'erreur
+
+# Mots-clés de détection de sévérité dans les logs (définis une fois)
+_ERROR_KEYWORDS = ("error", "err", "exception", "fatal", "critical", "oomkilled", "oom")
+_WARN_KEYWORDS = ("warn", "warning")
+_INFO_KEYWORDS = ("info",)
+
+
 def _analyze_logs(logs: list[str]) -> dict:
     """Analyser les logs pour extraire des informations utiles pour le prompt."""
     if not logs:
@@ -66,13 +74,13 @@ def _analyze_logs(logs: list[str]) -> dict:
 
     for line in logs:
         line_lower = line.lower()
-        if any(k in line_lower for k in ("error", "err", "exception", "fatal", "critical", "oomkilled", "oom")):
+        if any(k in line_lower for k in _ERROR_KEYWORDS):
             severity_counts["ERROR"] += 1
-            errors.append(line[-200:])  # garder les 200 derniers caractères
-        elif any(k in line_lower for k in ("warn", "warning")):
+            errors.append(line[-_MAX_ERROR_LINE_LENGTH:])
+        elif any(k in line_lower for k in _WARN_KEYWORDS):
             severity_counts["WARN"] += 1
-            warnings.append(line[-200:])
-        elif any(k in line_lower for k in ("info",)):
+            warnings.append(line[-_MAX_ERROR_LINE_LENGTH:])
+        elif any(k in line_lower for k in _INFO_KEYWORDS):
             severity_counts["INFO"] += 1
 
     return {
@@ -207,7 +215,7 @@ Tiens compte de cette solution éprouvée dans ton analyse.
         # Gérer le cas où l'IA entoure le JSON de ```json ... ```
         if raw_content.startswith("```"):
             parts = raw_content.split("```")
-            raw_content = parts[1]
+            raw_content = parts[1] if len(parts) > 1 else parts[0]
             if raw_content.startswith("json"):
                 raw_content = raw_content[4:]
 

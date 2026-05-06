@@ -58,7 +58,7 @@ async def send_alert_email(
     severity_color = "#dc2626" if severite in ("haute", "critique") else "#d97706"
 
     # ── Construire l'email ──
-    from_addr = settings.smtp_user or f"assistant-sre@{settings.smtp_host}"
+    from_addr = settings.smtp_user or "assistant-sre@localhost"
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"🔴 Alerte {alert_name} — {namespace}/{pod}"
     msg["From"] = f"{settings.smtp_from_name} <{from_addr}>"
