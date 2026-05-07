@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.services.database import get_db
 from app.config import settings
+from app.webapp import get_webapp_health
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -51,3 +52,9 @@ async def readiness() -> JSONResponse:
 async def startup() -> dict[str, str]:
     """K8s startup probe — confirms initial startup is complete."""
     return {"status": "started", "version": settings.app_version}
+
+
+@router.get("/health/webapp", tags=["Health"], summary="Webapp health")
+async def webapp_health() -> dict[str, str]:
+    """Webapp health endpoint including LangGraph readiness."""
+    return get_webapp_health()

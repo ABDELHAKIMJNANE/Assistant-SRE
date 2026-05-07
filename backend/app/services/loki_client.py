@@ -1,7 +1,7 @@
 """LokiClient — Récupère les logs depuis Loki via LogQL (async)."""
 
 import logging
-from typing import Optional
+from datetime import datetime, timezone
 
 import httpx
 
@@ -15,6 +15,8 @@ async def get_logs(
     namespace: str = "app-demo",
     limit: int = 100,
     since: str = "30m",
+    start: datetime | None = None,
+    end: datetime | None = None,
 ) -> list[str]:
     """
     Interroger Loki pour récupérer les logs d'un pod spécifique.
@@ -32,11 +34,17 @@ async def get_logs(
     query = f'{{namespace="{namespace}", pod="{pod}"}}'
     url = f"{settings.loki_url}/loki/api/v1/query_range"
 
-    params = {
+    params: dict[str, str | int] = {
         "query": query,
         "limit": limit,
-        "since": since,
     }
+    if start and end:
+        start_utc = start.astimezone(timezone.utc)
+        end_utc = end.astimezone(timezone.utc)
+        params["start"] = str(int(start_utc.timestamp() * 1_000_000_000))
+        params["end"] = str(int(end_utc.timestamp() * 1_000_000_000))
+    else:
+        params["since"] = since
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:

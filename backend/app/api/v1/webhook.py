@@ -1,60 +1,50 @@
 """Webhook endpoint — Reçoit les alertes Grafana et lance la pipeline IA."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks
 
+from app.dependencies.investigation import InvestigationPipelineDependency
+from app.graph_pipeline import InvestigationPipeline
 from app.models.webhook import AlertPayload
-from app.services import database, loki_client, prometheus_client, sanitizer, llm_engine, notification
+from app.services import database, notification
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-async def process_alert(payload: AlertPayload) -> None:
+async def process_alert(
+    payload: AlertPayload,
+    investigation_pipeline: InvestigationPipeline,
+) -> None:
     """
     Pipeline complète de traitement d'une alerte.
     Exécutée en arrière-plan pour répondre immédiatement à Grafana.
 
     Étapes :
-    1. Collecter les logs (Loki) et métriques (Prometheus)
-    2. Auto-Learning : chercher un incident résolu passé (Cosmos DB)
-    3. Tronquer et nettoyer les données (Sanitizer)
-    4. Construire le Mega-Prompt et appeler Azure OpenAI
-    5. Sauvegarder l'incident dans Cosmos DB
-    6. Envoyer un email de notification via Outlook
+    1. Auto-Learning : chercher un incident résolu passé (Cosmos DB)
+    2. Exécuter la pipeline LangGraph (window, logs/metrics, filtrage+redaction, diagnostic, solution)
+    3. Sauvegarder l'incident dans Cosmos DB
+    4. Envoyer un email de notification via Outlook
     """
     pod = payload.labels.get("pod", "unknown")
     namespace = payload.labels.get("namespace", "app-demo")
 
     logger.info(f"🔄 Traitement de l'alerte '{payload.alert_name}' — pod={pod}")
 
-    # ── ① Collecte des Preuves ──
-    logs = await loki_client.get_logs(pod=pod, namespace=namespace)
-    metrics = await prometheus_client.get_metrics(pod=pod, namespace=namespace)
-
-    # ── ② Auto-Learning : chercher dans Cosmos DB (0 token) ──
+    # ── ① Auto-Learning : chercher dans Cosmos DB (0 token) ──
     past_incident = await database.find_past_incident(payload.alert_name)
     past_solution = None
     if past_incident:
         # Utiliser la solution validée par le SRE si disponible
         past_solution = past_incident.get("validated_solution") or past_incident.get("diagnostic", {}).get("solution")
 
-    # ── ③ Troncature + ④ Sanitizer ──
-    cleaned_logs = sanitizer.sanitize_logs(logs, max_lines=50)
+    # ── ② Pipeline LangGraph multi-étapes ──
+    investigation_state = await investigation_pipeline.run(payload=payload, past_solution=past_solution)
+    diagnostic = investigation_state.diagnostic or {}
 
-    # ── ⑤ Mega-Prompt Azure OpenAI ──
-    diagnostic = await llm_engine.analyze(
-        alert_name=payload.alert_name,
-        message=payload.message,
-        labels=payload.labels,
-        cleaned_logs=cleaned_logs,
-        metrics=metrics,
-        past_solution=past_solution,
-    )
-
-    # ── ⑥ Sauvegarde dans Cosmos DB ──
+    # ── ③ Sauvegarde dans Cosmos DB ──
     # L'incident est créé avec status "pending_approval".
     # La solution validée finale sera enregistrée UNIQUEMENT quand le SRE approuve.
     incident_doc = {
@@ -62,18 +52,23 @@ async def process_alert(payload: AlertPayload) -> None:
         "state": payload.state,
         "labels": payload.labels,
         "message": payload.message,
-        "logs_collected": len(logs),
-        "metrics_collected": len(metrics),
+        "logs_collected": len(investigation_state.raw_logs),
+        "metrics_collected": len(investigation_state.raw_metrics),
         "past_solution_used": past_solution,
         "diagnostic": diagnostic,
+        "incident_window": investigation_state.incident_window.model_dump(mode="json") if investigation_state.incident_window else None,
+        "evidence": investigation_state.evidence,
+        "redaction_map": investigation_state.redaction_map,
+        "confidence_score": investigation_state.confidence_score,
+        "solution_steps": investigation_state.solution_steps,
         "status": "pending_approval",
         "validated_solution": None,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "resolved_at": None,
     }
     incident_id = await database.insert_incident(incident_doc)
 
-    # ── ⑦ Notification Email Outlook ──
+    # ── ④ Notification Email Outlook ──
     await notification.send_alert_email(
         alert_name=payload.alert_name,
         pod=pod,
@@ -88,6 +83,7 @@ async def process_alert(payload: AlertPayload) -> None:
 async def receive_webhook(
     payload: AlertPayload,
     background_tasks: BackgroundTasks,
+    investigation_pipeline: InvestigationPipelineDependency,
 ) -> dict[str, str]:
     """
     Reçoit une alerte Grafana et lance le traitement en arrière-plan.
@@ -96,5 +92,5 @@ async def receive_webhook(
     On répond donc immédiatement 202 Accepted et on traite en background.
     """
     logger.info(f"📥 Webhook reçu : {payload.alert_name} — {payload.state}")
-    background_tasks.add_task(process_alert, payload)
+    background_tasks.add_task(process_alert, payload, investigation_pipeline)
     return {"message": "Alerte reçue, traitement en cours"}

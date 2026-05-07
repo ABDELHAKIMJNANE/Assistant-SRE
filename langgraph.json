@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    "./backend"
+  ],
+  "graphs": {
+    "assistant_sre_investigation": "app.graph_pipeline:graph"
+  },
+  "env": "./backend/.env"
+}
