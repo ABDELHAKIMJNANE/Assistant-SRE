@@ -1,8 +1,8 @@
 """Schema Pydantic — Payload entrant du webhook Grafana."""
 
-from typing import Optional
+from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AlertPayload(BaseModel):
@@ -17,8 +17,12 @@ class AlertPayload(BaseModel):
     }
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     alert_name: str
     state: str = "alerting"
-    labels: dict = {}
+    labels: dict[str, str] = Field(default_factory=dict)
     message: str = ""
-    dashboard_url: Optional[str] = None
+    dashboard_url: str | None = None
+    starts_at: datetime | None = Field(default=None, alias="startsAt")
+    fired_at: datetime | None = Field(default=None, alias="firedAt")

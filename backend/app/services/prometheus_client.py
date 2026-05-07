@@ -1,6 +1,7 @@
 """PrometheusClient — Récupère les métriques depuis Prometheus via PromQL (async)."""
 
 import logging
+from datetime import datetime
 
 import httpx
 
@@ -9,7 +10,12 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
-async def get_metrics(pod: str, namespace: str = "app-demo") -> dict[str, float]:
+async def get_metrics(
+    pod: str,
+    namespace: str = "app-demo",
+    start: datetime | None = None,
+    end: datetime | None = None,
+) -> dict[str, float]:
     """
     Interroger Prometheus pour récupérer les métriques d'un pod.
     Récupère : CPU, Mémoire, Restarts.
@@ -22,6 +28,8 @@ async def get_metrics(pod: str, namespace: str = "app-demo") -> dict[str, float]
         Dict avec les métriques clés du pod
     """
     base_url = f"{settings.prometheus_url}/api/v1/query"
+    if start and end:
+        base_url = f"{settings.prometheus_url}/api/v1/query_range"
     metrics = {}
 
     queries = {
@@ -33,15 +41,27 @@ async def get_metrics(pod: str, namespace: str = "app-demo") -> dict[str, float]
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             for metric_name, query in queries.items():
-                response = await client.get(base_url, params={"query": query})
+                params: dict[str, str | float] = {"query": query}
+                if start and end:
+                    params.update(
+                        {
+                            "start": start.timestamp(),
+                            "end": end.timestamp(),
+                            "step": "30s",
+                        }
+                    )
+                response = await client.get(base_url, params=params)
                 response.raise_for_status()
 
                 data = response.json()
                 results = data.get("data", {}).get("result", [])
 
                 if results:
-                    # Prendre la dernière valeur
-                    value = results[0].get("value", [None, "0"])[1]
+                    if start and end:
+                        range_values = results[0].get("values", [])
+                        value = range_values[-1][1] if range_values else "0"
+                    else:
+                        value = results[0].get("value", [None, "0"])[1]
                     metrics[metric_name] = float(value)
                 else:
                     metrics[metric_name] = 0.0

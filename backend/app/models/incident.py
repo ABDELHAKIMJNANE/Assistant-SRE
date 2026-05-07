@@ -1,7 +1,6 @@
 """Schema Pydantic — Document incident MongoDB / Cosmos DB."""
 
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -20,16 +19,16 @@ class IncidentCreate(BaseModel):
 
     alert_name: str
     state: str
-    labels: dict = {}
+    labels: dict[str, str] = Field(default_factory=dict)
     message: str = ""
     logs_collected: int = 0
     metrics_collected: int = 0
-    past_solution_used: Optional[str] = None
-    diagnostic: Optional[Diagnostic] = None
+    past_solution_used: str | None = None
+    diagnostic: Diagnostic | None = None
     status: str = "ouvert"
-    validated_solution: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    resolved_at: Optional[datetime] = None
+    validated_solution: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    resolved_at: datetime | None = None
 
 
 class IncidentResponse(BaseModel):
@@ -40,16 +39,16 @@ class IncidentResponse(BaseModel):
     id: str = Field(alias="_id")
     alert_name: str
     state: str = ""
-    labels: dict = {}
+    labels: dict[str, str] = Field(default_factory=dict)
     message: str = ""
     logs_collected: int = 0
     metrics_collected: int = 0
-    past_solution_used: Optional[str] = None
-    diagnostic: Optional[Diagnostic] = None
+    past_solution_used: str | None = None
+    diagnostic: Diagnostic | None = None
     status: str = "ouvert"
-    validated_solution: Optional[str] = None
-    created_at: Optional[datetime] = None
-    resolved_at: Optional[datetime] = None
+    validated_solution: str | None = None
+    created_at: datetime | None = None
+    resolved_at: datetime | None = None
 
 
 class ValidateRequest(BaseModel):

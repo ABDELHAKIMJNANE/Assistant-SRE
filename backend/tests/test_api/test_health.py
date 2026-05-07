@@ -24,3 +24,11 @@ class TestHealthEndpoints:
         response = client.get("/api/v1/health/startup")
         assert response.status_code == 200
         assert response.json()["status"] == "started"
+
+    def test_webapp_health(self, client):
+        """GET /api/v1/health/webapp should include LangGraph status."""
+        response = client.get("/api/v1/health/webapp")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["langgraph"] == "ready"
